@@ -1,0 +1,82 @@
+version: '3.8'
+
+services:
+
+  # ── Hadoop NameNode ──────────────────────────
+  namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: namenode
+    environment:
+      - CLUSTER_NAME=retail-datalake
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+    ports:
+      - "9870:9870"
+      - "9000:9000"
+    volumes:
+      - namenode_data:/hadoop/dfs/name
+    networks:
+      - datalake_net
+
+  # ── Hadoop DataNode ──────────────────────────
+  datanode:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: datanode
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+    depends_on:
+      - namenode
+    volumes:
+      - datanode_data:/hadoop/dfs/data
+    networks:
+      - datalake_net
+
+  # ── Spark Master ─────────────────────────────
+  spark-master:
+    image: bde2020/spark-master:3.3.0-hadoop3.3
+    container_name: spark-master
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+    ports:
+      - "8080:8080"
+      - "7077:7077"
+    depends_on:
+      - namenode
+    networks:
+      - datalake_net
+
+  # ── Spark Worker ─────────────────────────────
+  spark-worker:
+    image: bde2020/spark-worker:3.3.0-hadoop3.3
+    container_name: spark-worker
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+      - CORE_CONF_fs_defaultFS=hdfs://namenode:9000
+    depends_on:
+      - spark-master
+    networks:
+      - datalake_net
+
+  # ── Jupyter Notebook ─────────────────────────
+  jupyter:
+    image: jupyter/pyspark-notebook:latest
+    container_name: jupyter
+    ports:
+      - "8888:8888"
+    environment:
+      - SPARK_MASTER=spark://spark-master:7077
+    volumes:
+      - ../notebooks:/home/jovyan/work
+      - ../data:/home/jovyan/data
+      - ../results:/home/jovyan/results
+    depends_on:
+      - spark-master
+    networks:
+      - datalake_net
+
+networks:
+  datalake_net:
+    driver: bridge
+
+volumes:
+  namenode_data:
+  datanode_data:

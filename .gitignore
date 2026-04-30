@@ -1,0 +1,6 @@
+# Fichiers lourds ou temporaires
+*.log
+*.tmp
+*.csv
+__pycache__/
+.ipynb_checkpoints/
